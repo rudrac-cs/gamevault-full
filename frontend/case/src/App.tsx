@@ -1,35 +1,34 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react"
+import "./styles/tokens.css"
+import SearchBar from "./components/SearchBar"
+import GameGrid from "./components/GameGrid"
+import { MOCK_GAMES, type GameSummary } from "./lib/mock"
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [query, setQuery] = useState("")
+  const [games, setGames] = useState<GameSummary[]>(MOCK_GAMES)
+
+  function handleSearch() {
+    const q = query.trim().toLowerCase()
+    if (!q) { setGames(MOCK_GAMES); return }
+    setGames(MOCK_GAMES.filter(g => g.title.toLowerCase().includes(q)))
+  }
+
+  function openDetails(id: string) {
+    alert("Details view coming soon for id=" + id)
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <main style={{ maxWidth: 1200, margin: "0 auto", padding: "1.5rem" }}>
+      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h1 style={{ margin: 0 }}>Game Catalog</h1>
+      </header>
+
+      <div style={{ marginBottom: 16 }}>
+        <SearchBar value={query} onChange={setQuery} onSubmit={handleSearch} />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+
+      <GameGrid games={games} onOpen={openDetails} />
+    </main>
   )
 }
-
-export default App
