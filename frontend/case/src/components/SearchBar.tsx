@@ -2,40 +2,32 @@ type Props = {
   value: string
   onChange: (v: string) => void
   onSubmit?: () => void
+  placeholder?: string
+  className?: string
 }
 
-export default function SearchBar({ value, onChange, onSubmit }: Props) {
+export default function SearchBar({
+  value,
+  onChange,
+  onSubmit,
+  placeholder = "Search games…",
+  className,
+}: Props) {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); onSubmit?.() }}
-      style={{ display: "flex", gap: 8, width: "100%" }}
+      className={["search-bar", className].filter(Boolean).join(" ")}
     >
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search games…"
+        placeholder={placeholder}
         aria-label="Search games"
-        style={{
-          flex: 1,
-          background: "var(--card)",
-          color: "var(--fg)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
-          padding: "10px 12px",
-          outline: "none"
-        }}
+        className="search-bar__input"
       />
       <button
         type="submit"
-        style={{
-          background: "var(--brand)",
-          color: "#000",
-          border: "none",
-          borderRadius: 10,
-          padding: "10px 14px",
-          fontWeight: 600,
-          cursor: "pointer"
-        }}
+        className="search-bar__button"
       >
         Search
       </button>

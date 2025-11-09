@@ -1,34 +1,40 @@
+import type { MouseEvent } from "react"
 import type { GameSummary } from "../lib/mock"
 
 type Props = {
   game: GameSummary
-  onOpen?: (id: string) => void
+  onOpen?: (id: string | number) => void
+  onSaveToggle?: (game: GameSummary) => void
+  isSaved?: boolean
 }
 
-export default function GameCard({ game, onOpen }: Props) {
+export default function GameCard({ game, onOpen, onSaveToggle, isSaved }: Props) {
+  const fallbackImage = `https://picsum.photos/seed/${game.id}/400/560`
+  const cover = game.image || fallbackImage
+  const genres = game.genres?.length ? game.genres.join(", ") : "Unknown"
+
+  function handleSaveClick(e: MouseEvent) {
+    e.stopPropagation()
+    onSaveToggle?.(game)
+  }
+
   return (
-    <button
-      onClick={() => onOpen?.(game.id)}
-      style={{
-        textAlign: "left",
-        background: "var(--card)",
-        border: "1px solid var(--border)",
-        borderRadius: 12,
-        overflow: "hidden",
-        cursor: "pointer",
-        padding: 0
-      }}
-    >
-      <img
-        src={game.image}
-        alt={game.title}
-        style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }}
-      />
-      <div style={{ padding: "0.75rem 0.9rem" }}>
-        <div style={{ fontWeight: 600, lineHeight: 1.2 }}>{game.title}</div>
-        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
-          {(game.year ?? "—") + " • " + game.genres.join(", ")}
+    <button className="game-card" onClick={() => onOpen?.(game.id)} type="button">
+      <img className="game-card__cover" src={cover} alt={game.title} loading="lazy" />
+      <div className="game-card__body">
+        <div className="game-card__title">{game.title}</div>
+        <div className="game-card__meta">
+          {game.year ?? "—"} • {genres}
         </div>
+        {onSaveToggle && (
+          <button
+            className={`game-card__save ${isSaved ? "is-active" : ""}`}
+            type="button"
+            onClick={handleSaveClick}
+          >
+            {isSaved ? "In Library" : "Save"}
+          </button>
+        )}
       </div>
     </button>
   )

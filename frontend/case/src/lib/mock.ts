@@ -1,9 +1,18 @@
 export type GameSummary = {
-  id: string
+  id: string | number
   title: string
   year?: number
   genres: string[]
   image: string
+  rating?: number
+  description?: string
+  platforms?: string[]
+}
+
+export type GameDetails = GameSummary & {
+  screenshots?: string[]
+  aggRating?: number
+  purchaseLinks?: { store: string; url: string }[]
 }
 
 export const MOCK_GAMES: GameSummary[] = [
