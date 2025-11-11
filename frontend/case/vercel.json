@@ -1,8 +1,9 @@
 {
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://gamevault-api-9tvn.onrender.com/api/$1"
-    }
+    { "source": "/api/health", "destination": 
+"https://gamevault-api-9tvn.onrender.com/health" },
+    { "source": "/api/(.*)",   "destination": 
+"https://gamevault-api-9tvn.onrender.com/api/$1" }
   ]
 }
+
