@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://gamevault-api-9tvn.onrender.com/api/$1"
+    }
+  ]
+}
