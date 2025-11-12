@@ -223,7 +223,21 @@ export default function CatalogPage() {
       const summary = collection.find((game) => String(game.id) === String(id))
       try {
         const data = await getGame(Number(id))
-        setDetailGame(summary ? { ...summary, ...data } : data)
+        setDetailGame(() => {
+          const merged: GameDetails & { purchase_links?: GameDetails["purchaseLinks"] } = summary
+            ? { ...summary, ...data }
+            : { ...data }
+          if ((!merged.image || merged.image.length === 0) && summary?.image) {
+            merged.image = summary.image
+          }
+          if (!merged.purchaseLinks && merged.purchase_links) {
+            merged.purchaseLinks = merged.purchase_links
+          }
+          if (!merged.purchaseLinks?.length && Array.isArray((data as any).purchase_links)) {
+            merged.purchaseLinks = (data as any).purchase_links
+          }
+          return merged
+        })
       } catch (error_) {
         const message = error_ instanceof Error ? error_.message : "Failed to fetch details"
         setDetailError(message)
