@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import "../styles/tokens.css"
 import "../styles/app.css"
@@ -16,6 +16,7 @@ const FALLBACK_FEATURED: GameSummary = {
 }
 
 const NAV_TABS = ["Featured", "All Games", "My Library", "Recommended"] as const
+const PAGE_SIZE = 24
 type NavTab = (typeof NAV_TABS)[number]
 
 function normalizeFeaturedGame(game: Awaited<ReturnType<typeof getFeaturedGames>>[number]): GameSummary {
@@ -32,6 +33,16 @@ function normalizeFeaturedGame(game: Awaited<ReturnType<typeof getFeaturedGames>
   }
 }
 
+function sortGamesByTitle(list: GameSummary[]): GameSummary[] {
+  return [...list].sort((a, b) => {
+    const left = (a.title || "").toLowerCase()
+    const right = (b.title || "").toLowerCase()
+    if (left < right) return -1
+    if (left > right) return 1
+    return 0
+  })
+}
+
 function buildRecommendations(source: GameSummary[], count = 12): GameSummary[] {
   const copy = [...source]
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -45,10 +56,13 @@ export default function CatalogPage() {
   const [query, setQuery] = useState("")
   const [collection, setCollection] = useState<GameSummary[]>([])
   const [allGames, setAllGames] = useState<GameSummary[]>([])
+  const [allGamesPage, setAllGamesPage] = useState(1)
+  const [allGamesHasMore, setAllGamesHasMore] = useState(true)
   const [featuredGames, setFeaturedGames] = useState<GameSummary[]>([])
   const [recommendedGames, setRecommendedGames] = useState<GameSummary[]>([])
   const [library, setLibrary] = useState<GameSummary[]>([])
   const [loading, setLoading] = useState(false)
+  const [isPaginating, setIsPaginating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedGenre, setSelectedGenre] = useState("All")
   const [activeNav, setActiveNav] = useState<NavTab>("All Games")
@@ -56,21 +70,26 @@ export default function CatalogPage() {
   const [detailGame, setDetailGame] = useState<GameDetails | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   const libraryIds = useMemo(() => new Set(library.map((game) => String(game.id))), [library])
 
   const runSearch = useCallback(
     async (q: string) => {
+      const normalizedQuery = q.trim()
       setLoading(true)
       setError(null)
       try {
-        const data = await getGames({ query: q, page: 1, page_size: 24 })
-        setAllGames(data)
-        const nextRecommended = buildRecommendations(data)
+        const data = await getGames({ query: normalizedQuery, page: 1, page_size: PAGE_SIZE })
+        const sorted = sortGamesByTitle(data)
+        setAllGames(sorted)
+        setAllGamesPage(1)
+        setAllGamesHasMore(data.length === PAGE_SIZE)
+        const nextRecommended = buildRecommendations(sorted)
         setRecommendedGames(nextRecommended)
 
         if (activeNav === "All Games") {
-          setCollection(data)
+          setCollection(sorted)
         } else if (activeNav === "Recommended") {
           setCollection(nextRecommended)
         }
@@ -84,6 +103,29 @@ export default function CatalogPage() {
     },
     [activeNav]
   )
+
+  const loadMoreAllGames = useCallback(async () => {
+    if (loading || isPaginating || !allGamesHasMore || activeNav !== "All Games") {
+      return
+    }
+    setIsPaginating(true)
+    const nextPage = allGamesPage + 1
+    try {
+      const data = await getGames({ query: query.trim(), page: nextPage, page_size: PAGE_SIZE })
+      setAllGames((prev) => sortGamesByTitle([...prev, ...data]))
+      setAllGamesPage(nextPage)
+      setAllGamesHasMore(data.length === PAGE_SIZE)
+      setCollection((prev) => {
+        if (activeNav !== "All Games") return prev
+        return sortGamesByTitle([...prev, ...data])
+      })
+    } catch (error_) {
+      const message = error_ instanceof Error ? error_.message : "Failed to load games"
+      setError(message)
+    } finally {
+      setIsPaginating(false)
+    }
+  }, [activeNav, allGamesHasMore, allGamesPage, isPaginating, loading, query])
 
   const fetchFeatured = useCallback(async () => {
     setLoading(true)
@@ -105,7 +147,7 @@ export default function CatalogPage() {
   function handleSearch() {
     setActiveNav("All Games")
     setSelectedGenre("All")
-    runSearch(query.trim())
+    runSearch(query)
   }
 
   useEffect(() => {
@@ -117,6 +159,28 @@ export default function CatalogPage() {
       setCollection(library)
     }
   }, [library, activeNav])
+
+  useEffect(() => {
+    if (activeNav !== "All Games" || !allGamesHasMore) {
+      return
+    }
+    const sentinel = loadMoreRef.current
+    if (!sentinel) {
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            loadMoreAllGames()
+          }
+        })
+      },
+      { rootMargin: "200px 0px" }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [activeNav, allGamesHasMore, loadMoreAllGames, loading])
 
   const handleNavSelect = useCallback(
     (tab: NavTab) => {
@@ -132,7 +196,7 @@ export default function CatalogPage() {
         if (allGames.length) {
           setCollection(allGames)
         } else {
-          runSearch(query.trim())
+          runSearch(query)
         }
       } else if (tab === "My Library") {
         setCollection(library)
@@ -144,7 +208,7 @@ export default function CatalogPage() {
           setRecommendedGames(picks)
           setCollection(picks)
         } else {
-          runSearch(query.trim())
+          runSearch(query)
         }
       }
     },
@@ -286,12 +350,23 @@ export default function CatalogPage() {
               {loading ? (
                 <p style={{ color: "var(--muted)" }}>Loading…</p>
               ) : (
-                <GameGrid
-                  games={filteredGames}
-                  onOpen={openDetails}
-                  onSaveToggle={handleToggleLibrary}
-                  savedIds={libraryIds}
-                />
+                <>
+                  <GameGrid
+                    games={filteredGames}
+                    onOpen={openDetails}
+                    onSaveToggle={handleToggleLibrary}
+                    savedIds={libraryIds}
+                  />
+                  {activeNav === "All Games" && (
+                    <>
+                      {isPaginating && <p className="load-indicator">Loading more games…</p>}
+                      {!allGamesHasMore && filteredGames.length > 0 && (
+                        <p className="load-indicator">You&apos;ve reached the end.</p>
+                      )}
+                      <div ref={loadMoreRef} className="scroll-sentinel" aria-hidden />
+                    </>
+                  )}
+                </>
               )}
             </section>
           </>
