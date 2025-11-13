@@ -19,10 +19,14 @@ const NAV_TABS = ["Featured", "All Games", "My Library", "Recommended"] as const
 const PAGE_SIZE = 24
 type NavTab = (typeof NAV_TABS)[number]
 
-function normalizeFeaturedGame(game: Awaited<ReturnType<typeof getFeaturedGames>>[number]): GameSummary {
+function normalizeFeaturedGame(
+  game: Awaited<ReturnType<typeof getFeaturedGames>>[number]
+): (GameSummary & { igdbId: number }) {
   const year = game.releaseDate ? new Date(game.releaseDate * 1000).getFullYear() : undefined
   return {
-    id: game.id,
+    // use a safe UI id so it won't be mistaken for your internal /games id
+    id: `feat-${game.id}`,
+    igdbId: game.id,               // keep the IGDB id separately
     title: game.name || "Untitled",
     year,
     genres: game.genres || [],
@@ -74,6 +78,7 @@ export default function CatalogPage() {
 
   const libraryIds = useMemo(() => new Set(library.map((game) => String(game.id))), [library])
 
+  // Clean runSearch: loads data only; no activeNav in body or deps
   const runSearch = useCallback(
     async (q: string) => {
       const normalizedQuery = q.trim()
@@ -85,23 +90,15 @@ export default function CatalogPage() {
         setAllGames(sorted)
         setAllGamesPage(1)
         setAllGamesHasMore(data.length === PAGE_SIZE)
-        const nextRecommended = buildRecommendations(sorted)
-        setRecommendedGames(nextRecommended)
-
-        if (activeNav === "All Games") {
-          setCollection(sorted)
-        } else if (activeNav === "Recommended") {
-          setCollection(nextRecommended)
-        }
-      } catch (error_) {
-        const message = error_ instanceof Error ? error_.message : "Failed to load games"
-        setError(message)
+        setRecommendedGames(buildRecommendations(sorted))
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load games")
         setCollection([])
       } finally {
         setLoading(false)
       }
     },
-    [activeNav]
+    [] // ✅ empty; function doesn't use activeNav
   )
 
   const loadMoreAllGames = useCallback(async () => {
@@ -155,10 +152,45 @@ export default function CatalogPage() {
   }, [runSearch])
 
   useEffect(() => {
+    if (featuredGames.length) {
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await getFeaturedGames()
+        const normalized = data.map(normalizeFeaturedGame)
+        if (!cancelled) {
+          setFeaturedGames(normalized)
+        }
+      } catch {
+        // ignore background featured failures; explicit fetch handles errors
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [featuredGames.length])
+
+  useEffect(() => {
     if (activeNav === "My Library") {
       setCollection(library)
     }
   }, [library, activeNav])
+
+  // Sync All Games → grid
+  useEffect(() => {
+    if (activeNav === "All Games") {
+      setCollection(allGames)
+    }
+  }, [allGames, activeNav])
+
+  // Sync Recommended → grid
+  useEffect(() => {
+    if (activeNav === "Recommended") {
+      setCollection(recommendedGames)
+    }
+  }, [recommendedGames, activeNav])
 
   useEffect(() => {
     if (activeNav !== "All Games" || !allGamesHasMore) {
@@ -220,33 +252,45 @@ export default function CatalogPage() {
       setDetailOpen(true)
       setDetailLoading(true)
       setDetailError(null)
-      const summary = collection.find((game) => String(game.id) === String(id))
+
+      const summary = collection.find((g) => String(g.id) === String(id))
+
       try {
-        const data = await getGame(Number(id))
+        let data: GameDetails | null = null
+
+        // ✅ Wrap the OR so 'in' only runs when summary exists
+        if (
+          summary &&
+          (
+            (typeof summary.id === "string" && summary.id.startsWith("feat-")) ||
+            ("igdbId" in (summary as any))
+          )
+        ) {
+          const match = allGames.find((g) => g.title === summary.title)
+          if (match) {
+            data = await getGame(Number(match.id))
+          } else {
+            data = summary as unknown as GameDetails
+          }
+        } else {
+          data = await getGame(Number(id))
+        }
+
         setDetailGame(() => {
-          const merged: GameDetails & { purchase_links?: GameDetails["purchaseLinks"] } = summary
-            ? { ...summary, ...data }
-            : { ...data }
-          if ((!merged.image || merged.image.length === 0) && summary?.image) {
-            merged.image = summary.image
-          }
-          if (!merged.purchaseLinks && merged.purchase_links) {
-            merged.purchaseLinks = merged.purchase_links
-          }
-          if (!merged.purchaseLinks?.length && Array.isArray((data as any).purchase_links)) {
-            merged.purchaseLinks = (data as any).purchase_links
-          }
+          const merged: any = summary ? { ...summary, ...data } : { ...data }
+          if ((!merged.image || merged.image.length === 0) && summary?.image) merged.image = summary.image
+          if (!merged.purchaseLinks && merged.purchase_links) merged.purchaseLinks = merged.purchase_links
           return merged
         })
       } catch (error_) {
         const message = error_ instanceof Error ? error_.message : "Failed to fetch details"
         setDetailError(message)
-        setDetailGame(summary ? (summary as GameDetails) : null)
+        setDetailGame((summary as GameDetails) ?? null)
       } finally {
         setDetailLoading(false)
       }
     },
-    [collection]
+    [collection, allGames]
   )
 
   const closeDetails = useCallback(() => {
@@ -271,7 +315,7 @@ export default function CatalogPage() {
     return collection.filter((g) => g.genres?.includes(selectedGenre))
   }, [collection, selectedGenre])
 
-  const heroGame = filteredGames[0] ?? collection[0] ?? FALLBACK_FEATURED
+  const heroGame = featuredGames[0] ?? filteredGames[0] ?? collection[0] ?? FALLBACK_FEATURED
   const heroRating = heroGame.rating ?? 4.8
   const heroDescription =
     heroGame.description ||

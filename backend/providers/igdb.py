@@ -9,6 +9,13 @@ from cachetools import TTLCache
 # ---- Env ----
 TWITCH_CLIENT_ID = os.getenv("TWITCH_CLIENT_ID")
 TWITCH_CLIENT_SECRET = os.getenv("TWITCH_CLIENT_SECRET")
+IGDB_CLIENT_ID = os.getenv("IGDB_CLIENT_ID")
+IGDB_CLIENT_SECRET = os.getenv("IGDB_CLIENT_SECRET")
+STATIC_ACCESS_TOKEN = os.getenv("TWITCH_APP_ACCESS_TOKEN") or os.getenv(
+    "IGDB_ACCESS_TOKEN"
+)
+CLIENT_ID = TWITCH_CLIENT_ID or IGDB_CLIENT_ID
+CLIENT_SECRET = TWITCH_CLIENT_SECRET or IGDB_CLIENT_SECRET
 logger = logging.getLogger(__name__)
 
 # ---- Caches ----
@@ -111,13 +118,15 @@ def _mock_detail(game_id: int) -> Optional[dict]:
     return None
 
 
-# ---- Auth: Twitch App Access Token ----
+# ---- Auth: Twitch/IGDB App Access Token ----
 def _fetch_twitch_token() -> Dict[str, str]:
+    if not (CLIENT_ID and CLIENT_SECRET):
+        raise RuntimeError("Missing IGDB/Twitch client credentials")
     resp = requests.post(
         "https://id.twitch.tv/oauth2/token",
         params={
-            "client_id": TWITCH_CLIENT_ID,
-            "client_secret": TWITCH_CLIENT_SECRET,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
             "grant_type": "client_credentials",
         },
         timeout=15,
@@ -130,6 +139,8 @@ def _fetch_twitch_token() -> Dict[str, str]:
 
 
 def get_twitch_token() -> str:
+    if STATIC_ACCESS_TOKEN:
+        return STATIC_ACCESS_TOKEN
     tok = _token_cache.get("token")
     if not tok or int(time.time()) >= tok["expires_at"]:
         tok = _fetch_twitch_token()
@@ -143,9 +154,12 @@ def igdb_request(endpoint: str, apicalypse_body: str) -> List[dict]:
     if cache_key in query_cache:
         return query_cache[cache_key]
 
+    if not CLIENT_ID and not STATIC_ACCESS_TOKEN:
+        raise RuntimeError("Missing IGDB/Twitch credentials (client id/token).")
+
     token = get_twitch_token()
     headers = {
-        "Client-ID": TWITCH_CLIENT_ID,
+        "Client-ID": CLIENT_ID,
         "Authorization": f"Bearer {token}",
     }
     url = f"https://api.igdb.com/v4/{endpoint}"
@@ -206,6 +220,28 @@ def normalize_details(item: dict) -> dict:
     return base
 
 
+def normalize_featured(item: dict) -> dict:
+    return {
+        "id": item.get("id"),
+        "name": item.get("name"),
+        "summary": item.get("summary"),
+        "releaseDate": item.get("first_release_date"),
+        "rating": item.get("rating"),
+        "aggRating": item.get("aggregated_rating"),
+        "genres": [
+            g.get("name")
+            for g in (item.get("genres") or [])
+            if isinstance(g, dict) and g.get("name")
+        ],
+        "platforms": [
+            p.get("abbreviation") or p.get("name")
+            for p in (item.get("platforms") or [])
+            if isinstance(p, dict)
+        ],
+        "cover": _cover_url(item.get("cover")),
+    }
+
+
 _STORE_HINTS = {
     "steam": "Steam",
     "store.steampowered.com": "Steam",
@@ -250,7 +286,7 @@ def search_games(query: str, limit: int = 24, offset: int = 0) -> List[dict]:
     limit = max(1, min(limit, 50))
     offset = max(0, offset)
     try:
-        if not (TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET):
+        if not (CLIENT_ID and (CLIENT_SECRET or STATIC_ACCESS_TOKEN)):
             raise RuntimeError("Missing credentials")
         # Build APICALYPSE request; we include related fields via "fields"
         q = query.replace('"', '\\"').strip()
@@ -271,7 +307,7 @@ offset {max(0, offset)};
 
 def get_game_details(game_id: int) -> Optional[dict]:
     try:
-        if not (TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET):
+        if not (CLIENT_ID and (CLIENT_SECRET or STATIC_ACCESS_TOKEN)):
             raise RuntimeError("Missing credentials")
         body = f"""
 fields id,name,first_release_date,summary,genres.name,cover.image_id,
@@ -288,3 +324,22 @@ limit 1;
             "IGDB detail fetch failed for id=%s (%s). Using mock data.", game_id, exc
         )
         return _mock_detail(game_id)
+
+
+def get_featured_games(limit: int = 20) -> List[dict]:
+    limit = max(1, min(limit, 50))
+    try:
+        if not (CLIENT_ID and (CLIENT_SECRET or STATIC_ACCESS_TOKEN)):
+            raise RuntimeError("Missing credentials")
+        body = f"""
+fields id,name,summary,first_release_date,cover.image_id,rating,genres.name,
+       platforms.abbreviation,platforms.name,aggregated_rating;
+sort popularity desc;
+where rating != null & first_release_date != null;
+limit {limit};
+"""
+        rows = igdb_request("games", body)
+        return [normalize_featured(row) for row in rows]
+    except Exception as exc:
+        logger.warning("IGDB featured fetch failed (%s).", exc)
+        raise

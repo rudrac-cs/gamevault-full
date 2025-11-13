@@ -12,3 +12,20 @@ coverage/
 .env.local
 .env
 .env.*
+
+# ignore envs
+backend/.env
+frontend/.env
+frontend/case/.env
+
+# envs & caches
+backend/.env
+backend/.env.save
+frontend/.env
+frontend/case/.env
+frontend/case/.env.local
+**/__pycache__/
+*.pyc
+# builds & deps
+frontend/case/dist/
+node_modules/

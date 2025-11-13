@@ -17,9 +17,9 @@ export default function GameGrid({ games, onOpen, onSaveToggle, savedIds }: Prop
     <div className="game-grid">
       {games.map((g) => (
         <GameCard
-          key={g.id}
+          key={String(g.id)}
           game={g}
-          onOpen={onOpen}
+          onOpen={() => onOpen?.(g.id)}
           onSaveToggle={onSaveToggle}
           isSaved={savedIds?.has(String(g.id))}
         />
