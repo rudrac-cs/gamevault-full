@@ -135,6 +135,12 @@
   pointer-events: none;
 }
 
+.hero-card .hero-visual{
+  height: 260px;
+  border-radius: 24px;
+  background: #131320;
+}
+
 .hero-content {
   position: relative;
   z-index: 1;

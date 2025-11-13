@@ -320,6 +320,7 @@ export default function CatalogPage() {
   const heroDescription =
     heroGame.description ||
     "Explore rich worlds, conquer legendary foes, and uncover stories worth remembering."
+  const heroCover = heroGame.image || `https://picsum.photos/seed/${heroGame.id}/1200/600`
 
   const handleToggleLibrary = useCallback((game: GameSummary) => {
     setLibrary((prev) => {
@@ -369,7 +370,18 @@ export default function CatalogPage() {
         {!error && (
           <>
             <section className="hero-card">
-              <div className="hero-visual" />
+              <div
+                className="hero-visual"
+                style={{
+                  backgroundImage: `
+      linear-gradient(90deg, rgba(10,10,15,0.9), rgba(10,10,15,0.6)),
+      url(${heroCover})
+    `,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  filter: "saturate(1.1) blur(0.05px)",
+                }}
+              />
               <div className="hero-content">
                 <div className="hero-chip">Featured Game</div>
                 <h1 className="hero-title">{heroGame.title}</h1>
