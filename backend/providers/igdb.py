@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from typing import Dict, List, Optional
+from urllib.parse import quote_plus
 
 import requests
 from cachetools import TTLCache
@@ -204,6 +205,10 @@ def normalize_summary(item: dict) -> dict:
 
 def normalize_details(item: dict) -> dict:
     base = normalize_summary(item)
+    purchase_links = _purchase_links(item.get("websites"))
+    if not purchase_links and item.get("name"):
+        query = quote_plus(f"buy {item['name']} game")
+        purchase_links = [{"store": "Search", "url": f"https://www.google.com/search?q={query}"}]
     base.update(
         {
             "description": (item.get("summary") or "")[:2000],
@@ -214,7 +219,7 @@ def normalize_details(item: dict) -> dict:
             ],
             "rating": item.get("aggregated_rating"),
             "platforms": [p.get("name", "") for p in (item.get("platforms") or [])],
-            "purchase_links": _purchase_links(item.get("websites")),
+            "purchase_links": purchase_links,
         }
     )
     return base
