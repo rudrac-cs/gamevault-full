@@ -316,7 +316,13 @@ export default function CatalogPage() {
   }, [collection, selectedGenre])
 
   const heroGame = featuredGames[0] ?? filteredGames[0] ?? collection[0] ?? FALLBACK_FEATURED
-  const heroRating = heroGame.rating ?? 4.8
+  const rawRating =
+    (heroGame as any).rating ?? (heroGame as any).aggRating ?? null
+
+  const heroRating =
+    rawRating == null ? null : (rawRating > 10 ? rawRating / 10 : rawRating)
+
+  const heroRatingText = heroRating == null ? "—" : heroRating.toFixed(1)
   const heroDescription =
     heroGame.description ||
     "Explore rich worlds, conquer legendary foes, and uncover stories worth remembering."
@@ -370,32 +376,17 @@ export default function CatalogPage() {
         {!error && (
           <>
             <section className="hero-card">
-              <div
-                className="hero-visual"
-                style={{
-                  backgroundImage: `
-      linear-gradient(90deg, rgba(10,10,15,0.9), rgba(10,10,15,0.6)),
-      url(${heroCover})
-    `,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  filter: "saturate(1.1) blur(0.05px)",
-                }}
-              />
-              <div className="hero-content">
-                <div className="hero-chip">Featured Game</div>
-                <h1 className="hero-title">{heroGame.title}</h1>
-                <p className="hero-meta">
-                  {heroGame.year || "—"} • ⭐ {heroRating} • {(heroGame.genres || []).slice(0, 2).join(", ")}
-                </p>
-                <p className="hero-description">{heroDescription}</p>
-                <div className="hero-actions">
-                  <button className="primary-btn" onClick={() => openDetails(heroGame.id)}>
-                    View Details
-                  </button>
-                  <button className="ghost-btn" onClick={() => handleNavSelect("All Games")}>
-                    Browse Catalog
-                  </button>
+              <div className="hero-banner">
+                <div className="hero-banner__text">
+                  <div className="hero-chip">Featured Game</div>
+                  <h1 className="hero-title">{heroGame.title}</h1>
+                  <p className="hero-meta">
+                    {heroGame.year || "—"} • ⭐ {heroRatingText} • {(heroGame.genres || []).slice(0, 3).join(", ")}
+                  </p>
+                  <p className="hero-description">{heroDescription}</p>
+                </div>
+                <div className="hero-banner__cover">
+                  <img src={heroCover} alt={heroGame.title} loading="lazy" />
                 </div>
               </div>
             </section>
