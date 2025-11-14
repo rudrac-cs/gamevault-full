@@ -132,6 +132,9 @@
   opacity: 0;
   pointer-events: none;
 }
+.hero-card.hero--compact{
+  cursor: pointer;
+}
 
 .hero-content {
   position: relative;

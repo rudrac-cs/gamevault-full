@@ -75,6 +75,8 @@ export default function CatalogPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
+  const [heroIndex, setHeroIndex] = useState(0)
+  const heroSeedRef = useRef(Math.random())
 
   const libraryIds = useMemo(() => new Set(library.map((game) => String(game.id))), [library])
 
@@ -315,7 +317,24 @@ export default function CatalogPage() {
     return collection.filter((g) => g.genres?.includes(selectedGenre))
   }, [collection, selectedGenre])
 
-  const heroGame = featuredGames[0] ?? filteredGames[0] ?? collection[0] ?? FALLBACK_FEATURED
+  const heroPool: GameSummary[] =
+    featuredGames.length
+      ? featuredGames
+      : filteredGames.length
+        ? filteredGames
+        : collection.length
+          ? collection
+          : [FALLBACK_FEATURED]
+
+  useEffect(() => {
+    if (heroPool.length) {
+      const randomIdx = Math.floor(heroSeedRef.current * heroPool.length)
+      setHeroIndex(randomIdx)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [featuredGames.length, filteredGames.length, collection.length])
+
+  const heroGame = heroPool[Math.max(0, heroIndex % heroPool.length)]
   const rawRating =
     (heroGame as any).rating ?? (heroGame as any).aggRating ?? null
 
@@ -375,7 +394,10 @@ export default function CatalogPage() {
 
         {!error && (
           <>
-            <section className="hero-card">
+            <section
+              className="hero-card hero--compact"
+              onClick={() => setHeroIndex((i) => (i + 1) % Math.max(1, heroPool.length))}
+            >
               <div className="hero-banner">
                 <div className="hero-banner__text">
                   <div className="hero-chip">Featured Game</div>
