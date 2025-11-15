@@ -1,0 +1,30 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="gv-bg" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#05050b"/>
+      <stop offset="100%" stop-color="#05050b"/>
+    </radialGradient>
+    <linearGradient id="gv-red" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff3e32"/>
+      <stop offset="100%" stop-color="#c51017"/>
+    </linearGradient>
+    <linearGradient id="gv-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#33c9ff"/>
+      <stop offset="100%" stop-color="#1a5bff"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="512" height="512" rx="64"/>
+    </clipPath>
+  </defs>
+  <rect width="512" height="512" fill="url(#gv-bg)" clip-path="url(#clip)"/>
+  <g clip-path="url(#clip)">
+    <text x="60" y="400" font-size="370" font-family="'Staatliches','Impact',sans-serif" font-weight="700" fill="url(#gv-red)">GV</text>
+    <path d="M176 252c0-44 32-74 72-74h80c40 0 72 30 72 74s-32 74-72 74h-80c-40 0-72-30-72-74z" fill="url(#gv-blue)" stroke="#01040c" stroke-width="14" stroke-linejoin="round"/>
+    <rect x="228" y="234" width="36" height="18" rx="9" fill="#01040c"/>
+    <circle cx="258" cy="270" r="10" fill="#01040c"/>
+    <circle cx="330" cy="222" r="12" fill="#01040c"/>
+    <circle cx="360" cy="252" r="12" fill="#01040c"/>
+    <circle cx="300" cy="252" r="12" fill="#01040c"/>
+    <circle cx="330" cy="282" r="12" fill="#01040c"/>
+  </g>
+</svg>

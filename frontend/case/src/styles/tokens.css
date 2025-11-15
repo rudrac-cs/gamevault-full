@@ -1,0 +1,34 @@
+
+:root{
+  --bg:#05050b;
+  --fg:#f5f7ff;
+  --muted:#b4b7d1;
+  --card:#121224;
+  --border:#1f2135;
+  --brand:#6aa8ff;
+  --accent:#ff4f5e;
+  --accent-dark:#bf2036;
+  --font-display:"Staatliches",sans-serif;
+  --font-body:"Space Grotesk","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--font-body);
+}
+h1,h2,h3,h4,h5,h6,
+.brand-logo,
+.nav-pill,
+.nav-pill.is-active,
+.home-brand,
+.home-cta,
+.hero-title,
+.hero-chip {
+  font-family:var(--font-display);
+  letter-spacing:0.04em;
+}
+a{color:var(--brand);text-decoration:none}
+a{color:var(--brand);text-decoration:none}

@@ -6,13 +6,23 @@ frontend/case/node_modules/
 dist/
 frontend/case/dist/
 build/
+.vite/
+.next/
+coverage/
 *.pyc
 __pycache__/
+**/__pycache__/
 
 # Environment variables
 .env
 .env.local
 .env.production
+.env*
+backend/.env
+backend/.env.save
+frontend/.env
+frontend/case/.env
+frontend/case/.env.local
 
 # IDE
 .vscode/
